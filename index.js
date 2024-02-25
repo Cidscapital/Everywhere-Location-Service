@@ -4,10 +4,10 @@ const mysql = require("mysql");
 const app = express();
 app.use(express.json());
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "password",
-  database: "location-service-db",
+  host: "sql6.freesqldatabase.com	",
+  user: "sql6686767",
+  password: "RN2xVyvl5u",
+  database: "sql6686767",
 });
 
 app.post("/register", async (req, res) => {
