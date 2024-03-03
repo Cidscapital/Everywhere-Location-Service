@@ -10,6 +10,21 @@ const db = mysql.createConnection({
   database: "sql6686767",
 });
 
+app.get("/", (req, res) => {
+  res.send("Hello World");
+});
+
+app.get("/users", (req, res) => {
+  const sql = "SELECT * FROM users";
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.json(result);
+    }
+  });
+});
+
 app.post("/register", async (req, res) => {
   const salt = bcrypt.genSaltSync(10);
   const password = req.body.password;
