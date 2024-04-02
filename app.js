@@ -8,6 +8,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const Swal = require('sweetalert2')
+const OpenCageGeocoder = require('opencage-api-client');
+
 
 
 dotenv.config(); // Load environment variables from .env file
@@ -67,10 +69,6 @@ const port = 3000;
     app.get('/signup', (req, res) => {
         res.render('signup.ejs');
     });
-
-    // app.get('/verification', (req, res) => {
-    //     res.render('verification.ejs');
-    // });
 
     app.get('/login', (req, res) => {
         res.render('login.ejs');
@@ -194,16 +192,17 @@ const port = 3000;
         });
     });
 
+    // Login route with location retrieval and database insertion
     app.post('/login', async (req, res) => {
-        const { email, pass } = req.body;
+        const { email, pass, latitude, longitude } = req.body;
 
         // Validation
-        if (!email || !pass) {
+        if (!email || !pass || !latitude || !longitude) {
             return res.status(400).json({ message: 'Invalid input' });
         }
 
         // Check if the user is verified
-        const checkVerificationQuery = 'SELECT is_verified FROM users WHERE email = ?';
+        const checkVerificationQuery = 'SELECT id, is_verified FROM users WHERE email = ?';
         db.query(checkVerificationQuery, [email], async (err, result) => {
             if (err) {
                 console.error(err);
@@ -225,19 +224,26 @@ const port = 3000;
                 if (loginResult.length === 1) {
                     const user = loginResult[0];
 
-                    // Compare the hashed password
+                    // Reverse geocode coordinates to obtain location information
                     try {
-                        if (await bcrypt.compare(pass, user.hashedpassword)) {
-                            // Successful login
+                        const response = await OpenCageGeocoder.geocode({ q: `${latitude}, ${longitude}` });
+                        const location = response.results[0].formatted;
+
+                        // Insert location data into the database
+                        const insertLocationQuery = 'INSERT INTO location_history (user_id, latitude, longitude, location) VALUES (?, ?, ?, ?)';
+                        db.query(insertLocationQuery, [user.id, latitude, longitude, location], async (locationErr, locationResult) => {
+                            if (locationErr) {
+                                console.error('Error inserting location data:', locationErr);
+                                return res.status(500).json({ message: 'Internal Server Error' });
+                            }
+
+                            // Continue with login process
                             req.session.userId = user.id; // Store user ID in the session
                             res.status(200).json({ message: 'Logged in successfully' });
-                        } else {
-                            // Incorrect password
-                            res.status(401).json({ message: 'Invalid credentials' });
-                        }
-                    } catch (hashError) {
-                        console.error('Error comparing passwords:', hashError);
-                        res.status(500).json({ message: 'Internal Server Error' });
+                        });
+                    } catch (geoError) {
+                        console.error('Error retrieving location information:', geoError);
+                        return res.status(500).json({ message: 'Internal Server Error' });
                     }
                 } else {
                     // User not found
