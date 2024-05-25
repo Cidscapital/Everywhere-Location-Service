@@ -194,10 +194,10 @@ const port = 3000;
 
     // Login route with location retrieval and database insertion
     app.post('/login', async (req, res) => {
-        const { email, pass, latitude, longitude } = req.body;
+        const { email, pass} = req.body;
 
         // Validation
-        if (!email || !pass || !latitude || !longitude) {
+        if (!email || !pass) {
             return res.status(400).json({ message: 'Invalid input' });
         }
 
@@ -224,27 +224,10 @@ const port = 3000;
                 if (loginResult.length === 1) {
                     const user = loginResult[0];
 
-                    // Reverse geocode coordinates to obtain location information
-                    try {
-                        const response = await OpenCageGeocoder.geocode({ q: `${latitude}, ${longitude}` });
-                        const location = response.results[0].formatted;
-
-                        // Insert location data into the database
-                        const insertLocationQuery = 'INSERT INTO location_history (user_id, latitude, longitude, location) VALUES (?, ?, ?, ?)';
-                        db.query(insertLocationQuery, [user.id, latitude, longitude, location], async (locationErr, locationResult) => {
-                            if (locationErr) {
-                                console.error('Error inserting location data:', locationErr);
-                                return res.status(500).json({ message: 'Internal Server Error' });
-                            }
-
-                            // Continue with login process
-                            req.session.userId = user.id; // Store user ID in the session
-                            res.status(200).json({ message: 'Logged in successfully' });
-                        });
-                    } catch (geoError) {
-                        console.error('Error retrieving location information:', geoError);
-                        return res.status(500).json({ message: 'Internal Server Error' });
-                    }
+                    // Continue with login process
+                    req.session.userId = user.id; // Store user ID in the session
+                    res.status(200).json({ message: 'Logged in successfully' });
+                        
                 } else {
                     // User not found
                     res.status(401).json({ message: 'Invalid credentials' });
